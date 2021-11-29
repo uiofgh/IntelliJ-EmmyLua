@@ -278,10 +278,8 @@ project(":") {
 
     intellij {
         type = "IC"
-        updateSinceUntilBuild = false
-        downloadSources = false
-        version = buildVersionData.ideaSDKVersion
-        localPath = System.getenv("IDEA_HOME_${buildVersionData.ideaSDKShortVersion}")
-        sandboxDirectory = "${project.buildDir}/${buildVersionData.ideaSDKShortVersion}/idea-sandbox"
+        updateSinceUntilBuild = true
+        downloadSources = true
+        version = "2021.2.3"
     }
 }
