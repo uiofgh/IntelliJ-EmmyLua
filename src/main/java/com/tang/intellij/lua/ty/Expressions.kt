@@ -53,7 +53,7 @@ private fun inferExprInner(expr: LuaPsiElement, context: SearchContext): ITy {
         is LuaParenExpr -> infer(expr.expr, context)
         is LuaNameExpr -> expr.infer(context)
         is LuaLiteralExpr -> expr.infer()
-        is LuaIndexExpr -> expr.infer(context)
+        is LuaIndexExpr -> Ty.UNKNOWN
         else -> Ty.UNKNOWN
     }
 }
@@ -363,7 +363,7 @@ private fun LuaIndexExpr.infer(context: SearchContext): ITy {
                 result = result.union(guessFieldType(propName, clazz, context))
                 true
             })
-            
+
             // table<string, K> -> member type is K
             prefixType.each { ty ->
                 if (ty is ITyGeneric && ty.getParamTy(0) == Ty.STRING)

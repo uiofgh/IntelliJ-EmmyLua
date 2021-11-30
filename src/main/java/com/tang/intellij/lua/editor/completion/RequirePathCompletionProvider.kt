@@ -62,12 +62,13 @@ class RequirePathCompletionProvider : LuaCompletionProvider() {
                 continue
 
             val fileName = FileUtil.getNameWithoutExtension(child.name)
-            val newPath = if (pck == null) fileName else "$pck.$fileName"
+            var newPath = if (pck == null) fileName else "$pck.$fileName"
 
             if (child.isDirectory) {
 
                 addAllFiles(project, completionResultSet, newPath, child.children)
             } else if (child.fileType === LuaFileType.INSTANCE) {
+                newPath = fileName
                 val lookupElement = LookupElementBuilder
                         .create(newPath)
                         .withIcon(LuaIcons.FILE)

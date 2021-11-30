@@ -113,7 +113,7 @@ class LuaSettings : PersistentStateComponent<LuaSettings> {
         }
 
         fun isRequireLikeFunctionName(name: String): Boolean {
-            return instance.requireLikeFunctionNames.contains(name) || name == Constants.WORD_REQUIRE
+            return instance.requireLikeFunctionNames.contains(name) || name == Constants.WORD_REQUIRE || name == "import"
         }
     }
 }

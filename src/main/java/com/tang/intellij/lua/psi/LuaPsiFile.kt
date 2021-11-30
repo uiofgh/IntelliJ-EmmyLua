@@ -67,6 +67,8 @@ open class LuaPsiFile(fileViewProvider: FileViewProvider) : PsiFileBase(fileView
 
     val moduleName: String?
         get() {
+            val fileName = this.name.substringBeforeLast(".")
+            return '"' + fileName + '"';
             val stub = stub as? LuaFileStub
             return if (stub != null) stub.module else findCachedModuleName()
         }
