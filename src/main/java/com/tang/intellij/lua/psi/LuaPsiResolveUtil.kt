@@ -24,6 +24,8 @@ import com.intellij.util.Processor
 import com.tang.intellij.lua.Constants
 import com.tang.intellij.lua.search.SearchContext
 import com.tang.intellij.lua.stubs.index.LuaClassMemberIndex
+import com.tang.intellij.lua.uiofgh.ResolverFactory
+import com.tang.intellij.lua.uiofgh.ResolverType
 
 fun resolveLocal(ref: LuaNameExpr, context: SearchContext? = null) = resolveLocal(ref.name, ref, context)
 
@@ -51,6 +53,24 @@ fun resolveInFile(refName:String, pin: PsiElement, context: SearchContext?): Psi
                 expr
         }
     }
+    // class.func = function(self) {}
+    // ..
+    // end
+    else if (ret != null && refName == Constants.WORD_SELF) {
+        val methodDef = PsiTreeUtil.getStubOrPsiParentOfType(pin, LuaClosureExpr::class.java)
+        val assignment = PsiTreeUtil.getStubOrPsiParentOfType(methodDef, LuaAssignStat::class.java)
+        val varlist = assignment?.firstChild
+        if (varlist is LuaVarList) {
+            val indexExpr = varlist.firstChild
+            if (indexExpr is LuaIndexExpr && context != null) {
+                val nameExpr = indexExpr.firstChild
+                if (nameExpr is LuaNameExpr) {
+                    ret = resolve(nameExpr, context)
+                }
+            }
+        }
+    }
+
     return ret
 }
 
@@ -92,7 +112,9 @@ fun resolve(nameExpr: LuaNameExpr, context: SearchContext): PsiElement? {
     if (resolveResult == null || resolveResult is LuaNameExpr) {
         val target = (resolveResult as? LuaNameExpr) ?: nameExpr
         val refName = target.name
-        val moduleName = target.moduleName ?: Constants.WORD_G
+        val project = context.project;
+        val map = ResolverFactory.getResolver(ResolverType.Dh25Client, project).dofileMap(project, context)
+        val moduleName = map.getOrDefault(refName, target).moduleName ?: Constants.WORD_G
         LuaClassMemberIndex.process(moduleName, refName, context, Processor {
             resolveResult = it
             false
@@ -110,7 +132,9 @@ fun multiResolve(ref: LuaNameExpr, context: SearchContext): Array<PsiElement> {
         list.add(resolveResult)
     } else {
         val refName = ref.name
-        val module = ref.moduleName ?: Constants.WORD_G
+        val project = context.project;
+        val map = ResolverFactory.getResolver(ResolverType.Dh25Client, project).dofileMap(project, context)
+        val module = map.getOrDefault(refName, ref).moduleName ?: Constants.WORD_G
         LuaClassMemberIndex.process(module, refName, context, Processor {
             list.add(it)
             true

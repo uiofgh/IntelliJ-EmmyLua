@@ -25,6 +25,8 @@ import com.tang.intellij.lua.lang.LuaParserDefinition
 import com.tang.intellij.lua.psi.*
 import com.tang.intellij.lua.search.SearchContext
 import com.tang.intellij.lua.ty.*
+import com.tang.intellij.lua.uiofgh.ResolverFactory
+import com.tang.intellij.lua.uiofgh.ResolverType
 
 /**
  * suggest local/global vars and functions
@@ -127,6 +129,8 @@ class LocalAndGlobalCompletionProvider(private val mask: Int) : ClassMemberCompl
             }
             completionResultSet.addElement(LookupElementBuilder.create(Constants.WORD_SELF))
         }
+        val resolver = ResolverFactory.getResolver(ResolverType.Dh25Client, project);
+        resolver.addDofileCompletions(session, this);
     }
 
     companion object {

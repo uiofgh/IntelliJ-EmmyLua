@@ -33,7 +33,7 @@ import com.tang.intellij.lua.search.SearchContext
 fun inferExpr(expr: LuaExpr?, context: SearchContext): ITy {
     if (expr == null)
         return Ty.UNKNOWN
-    if (expr is LuaIndexExpr || expr is LuaNameExpr) {
+    if ((expr is LuaIndexExpr || expr is LuaNameExpr) && expr.text != Constants.WORD_SELF) {
         val tree = LuaDeclarationTree.get(expr.containingFile)
         val declaration = tree.find(expr)?.firstDeclaration?.psi
         if (declaration != expr && declaration is LuaTypeGuessable) {
@@ -53,7 +53,7 @@ private fun inferExprInner(expr: LuaPsiElement, context: SearchContext): ITy {
         is LuaParenExpr -> infer(expr.expr, context)
         is LuaNameExpr -> expr.infer(context)
         is LuaLiteralExpr -> expr.infer()
-        is LuaIndexExpr -> Ty.UNKNOWN
+        is LuaIndexExpr -> expr.infer(context)
         else -> Ty.UNKNOWN
     }
 }

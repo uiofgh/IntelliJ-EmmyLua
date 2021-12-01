@@ -40,7 +40,7 @@ enum class MemberCompletionMode {
  * Created by tangzx on 2016/12/25.
  */
 open class ClassMemberCompletionProvider : LuaCompletionProvider() {
-    protected abstract class HandlerProcessor {
+    abstract class HandlerProcessor {
         open fun processLookupString(lookupString: String, member: LuaClassMember, memberTy: ITy?): String = lookupString
         abstract fun process(element: LuaLookupElement, member: LuaClassMember, memberTy: ITy?): LookupElement
     }
@@ -106,7 +106,7 @@ open class ClassMemberCompletionProvider : LuaCompletionProvider() {
         })
     }
 
-    protected fun addClass(contextTy: ITy,
+    fun addClass(contextTy: ITy,
                            luaType:ITyClass,
                            project: Project,
                            completionMode:MemberCompletionMode,
@@ -183,7 +183,7 @@ open class ClassMemberCompletionProvider : LuaCompletionProvider() {
                 val firstParam = it.getFirstParam(thisType, isColonStyle)
                 if (isColonStyle) {
                     if (firstParam == null) return@Processor true
-                    if (!callType.subTypeOf(firstParam.ty, SearchContext.get(classMember.project), true))
+                    if (firstParam.name != "self" && !callType.subTypeOf(firstParam.ty, SearchContext.get(classMember.project), true))
                         return@Processor true
                 }
 
