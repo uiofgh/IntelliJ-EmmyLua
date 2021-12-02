@@ -442,5 +442,16 @@ private fun LuaTableExpr.infer(): ITy {
                 return TyArray(ty)
         }
     }
+    // global XXX = {} is used as class
+    val p1 = PsiTreeUtil.getStubOrPsiParent(this)
+    if (p1 is LuaExprList) {
+        val p2 = PsiTreeUtil.getStubOrPsiParent(p1)
+        if (p2 is LuaAssignStat){
+            val nameExpr = p2.getExprAt(0)
+            if (nameExpr is LuaNameExpr && isGlobal(nameExpr)) {
+                return TyLazyClass(nameExpr.name)
+            }
+        }
+    }
     return TyTable(this)
 }
