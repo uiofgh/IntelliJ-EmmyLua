@@ -31,12 +31,15 @@ import com.tang.intellij.lua.psi.*
 import com.tang.intellij.lua.psi.search.LuaClassInheritorsSearch
 import com.tang.intellij.lua.psi.search.LuaShortNamesManager
 import com.tang.intellij.lua.search.SearchContext
+import com.tang.intellij.lua.uiofgh.ResolverFactory
+import com.tang.intellij.lua.uiofgh.ResolverType
 
 interface ITyClass : ITy {
     val className: String
     val varName: String
     var superClassName: String?
     var aliasName: String?
+    var superClassName2: Array<String>
     fun processAlias(processor: Processor<String>): Boolean
     fun lazyInit(searchContext: SearchContext)
     fun getMemberChain(context: SearchContext): ClassMemberChain
@@ -74,7 +77,8 @@ fun ITyClass.isVisibleInScope(project: Project, contextTy: ITy, visibility: Visi
 
 abstract class TyClass(override val className: String,
                        override val varName: String = "",
-                       override var superClassName: String? = null
+                       override var superClassName: String? = null,
+                       override var superClassName2: Array<String> = emptyArray(),
 ) : Ty(TyKind.Class), ITyClass {
 
     final override var aliasName: String? = null
@@ -101,8 +105,15 @@ abstract class TyClass(override val className: String,
     }
 
     override fun getMemberChain(context: SearchContext): ClassMemberChain {
-        val superClazz = getSuperClass(context) as? ITyClass
-        val chain = ClassMemberChain(this, superClazz?.getMemberChain(context))
+//        val superClazz = getSuperClass(context) as? ITyClass
+//        val chain = ClassMemberChain(this, superClazz?.getMemberChain(context))
+        val superClazzs = getSuperClass2(context)
+        val superChains = ArrayList<ClassMemberChain>()
+        for (superClazz in superClazzs) {
+            val chain2 = superClazz.getMemberChain(context)
+            superChains.add(chain2)
+        }
+        val chain = ClassMemberChain(this, superChains.toTypedArray())
         val manager = LuaShortNamesManager.getInstance(context.project)
         val members = manager.getClassMembers(className, context)
         members.forEach { chain.add(it) }
@@ -128,7 +139,11 @@ abstract class TyClass(override val className: String,
 
     override fun findSuperMember(name: String, searchContext: SearchContext): LuaClassMember? {
         val chain = getMemberChain(searchContext)
-        return chain.superChain?.findMember(name)
+        for (superChain in chain.superChains) {
+            val member = superChain.findMember(name)
+            if (member != null) return member
+        }
+        return null
     }
 
     override fun accept(visitor: ITyVisitor) {
@@ -154,10 +169,28 @@ abstract class TyClass(override val className: String,
     override fun getSuperClass(context: SearchContext): ITy? {
         lazyInit(context)
         val clsName = superClassName
+        var cls : ITy? = null
         if (clsName != null && clsName != className) {
-            return Ty.getBuiltin(clsName) ?: LuaShortNamesManager.getInstance(context.project).findClass(clsName, context)?.type
+            cls = Ty.getBuiltin(clsName) ?: LuaShortNamesManager.getInstance(context.project).findClass(clsName, context)?.type
+            if (cls == null) cls = ResolverFactory.getResolver(ResolverType.Dh25Client, context.project).getLazyClass(clsName)
         }
-        return null
+        return cls
+    }
+
+    fun getSuperClass2(context: SearchContext): Array<ITyClass> {
+        lazyInit(context)
+        val clsNames = superClassName2
+        val clss = ArrayList<ITyClass>()
+        for(clsName in clsNames) {
+            var cls: ITy? = null
+            if (clsName != className) {
+                cls = Ty.getBuiltin(clsName) ?: LuaShortNamesManager.getInstance(context.project).findClass(clsName, context)?.type
+                if (cls == null) cls = ResolverFactory.getResolver(ResolverType.Dh25Client, context.project).getLazyClass(clsName)
+            }
+            if (cls is ITyClass)
+                clss.add(cls)
+        }
+        return clss.toTypedArray()
     }
 
     override fun subTypeOf(other: ITy, context: SearchContext, strict: Boolean): Boolean {
@@ -257,7 +290,9 @@ open class TySerializedClass(name: String,
 }
 
 //todo Lazy class ty
-class TyLazyClass(name: String) : TySerializedClass(name)
+class TyLazyClass(name: String,
+                  override var superClassName: String? = null,
+                  override var superClassName2: Array<String> = emptyArray()) : TySerializedClass(name)
 
 fun createSerializedClass(name: String,
                           varName: String = name,

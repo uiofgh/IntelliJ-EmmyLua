@@ -29,6 +29,8 @@ import com.tang.intellij.lua.psi.impl.LuaNameExprMixin
 import com.tang.intellij.lua.psi.search.LuaShortNamesManager
 import com.tang.intellij.lua.search.GuardType
 import com.tang.intellij.lua.search.SearchContext
+import com.tang.intellij.lua.uiofgh.ResolverFactory
+import com.tang.intellij.lua.uiofgh.ResolverType
 
 fun inferExpr(expr: LuaExpr?, context: SearchContext): ITy {
     if (expr == null)
@@ -184,6 +186,44 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
 
         return Ty.UNKNOWN
     }
+    // class_define
+    if (expr is LuaNameExpr && expr.name == "class_define") {
+        var parentClsName: String? = null
+        when (val arg = getFirstArg(this)) {
+            is LuaIndexExpr -> parentClsName = arg.name?.substringAfterLast('.')
+            is LuaNameExpr -> parentClsName = arg.name
+        }
+        val assign = PsiTreeUtil.getStubOrPsiParentOfType(this, LuaAssignStat::class.java)
+        val nameExpr = assign?.getExprAt(0)
+        if (nameExpr is LuaNameExpr) {
+            val sonName = nameExpr.name
+            val resolver = ResolverFactory.getResolver(ResolverType.Dh25Client, context.project)
+            resolver.regClassInherit(sonName, parentClsName)
+            return resolver.getLazyClass(sonName)
+        }
+    }
+    // class_inherit
+    if (expr is LuaNameExpr && expr.name == "class_inherit") {
+        var parentName: String? = null
+        when (val arg = getSecondArg(this)) {
+            is LuaIndexExpr -> parentName = arg.name?.substringAfterLast('.')
+            is LuaNameExpr -> parentName = arg.name
+        }
+        if (parentName != null) {
+            var sonName: String? = null
+            when (val arg = getFirstArg(this)) {
+                is LuaIndexExpr -> sonName = null//arg.name?.substringAfterLast('.')
+                is LuaNameExpr -> sonName = arg.name
+            }
+            val resolver = ResolverFactory.getResolver(ResolverType.Dh25Client, context.project)
+            if (sonName != null) {
+                resolver.regClassInherit(sonName, parentName)
+                return resolver.getLazyClass(sonName)
+            }  else {
+                return resolver.getLazyClass(parentName)
+            }
+        }
+    }
 
     var ret: ITy = Ty.UNKNOWN
     val ty = infer(expr, context)//expr.guessType(context)
@@ -206,7 +246,7 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
     // xxx.new()
     if (expr is LuaIndexExpr) {
         val fnName = expr.name
-        if (fnName != null && LuaSettings.isConstructorName(fnName)) {
+        if (fnName != null && fnName.toLowerCase() == "new") {
             ret = ret.union(expr.guessParentType(context))
         }
     }
@@ -285,10 +325,10 @@ private fun getType(context: SearchContext, def: PsiElement): ITy {
             }
 
             //Global
-            if (isGlobal(def) && type !is ITyPrimitive) {
-                //use globalClassTy to store class members, that's very important
-                type = type.union(TyClass.createGlobalType(def, context.forStub))
-            }
+//            if (isGlobal(def) && type !is ITyPrimitive) {
+//                //use globalClassTy to store class members, that's very important
+//                type = type.union(TyClass.createGlobalType(def, context.forStub))
+//            }
             return type
         }
         is LuaTypeGuessable -> return def.guessType(context)

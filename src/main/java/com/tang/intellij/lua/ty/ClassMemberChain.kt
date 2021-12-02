@@ -18,13 +18,13 @@ package com.tang.intellij.lua.ty
 
 import com.tang.intellij.lua.psi.LuaClassMember
 
-class ClassMemberChain(val ty: ITyClass, var superChain: ClassMemberChain?) {
+class ClassMemberChain(val ty: ITyClass, var superChains: Array<ClassMemberChain>) {
     private val members = mutableMapOf<String, LuaClassMember>()
 
     fun add(member: LuaClassMember) {
         val name = member.name ?: return
-        val superExist = superChain?.findMember(name)
-        val override = superExist == null || canOverride(member, superExist)
+//        val superExist = superChain?.findMember(name)
+        val override = true //superExist == null || canOverride(member, superExist)
         if (override) {
             val selfExist = members[name]
             if (selfExist == null || member.worth > selfExist.worth)
@@ -33,7 +33,15 @@ class ClassMemberChain(val ty: ITyClass, var superChain: ClassMemberChain?) {
     }
 
     fun findMember(name: String): LuaClassMember? {
-        return members.getOrElse(name) { superChain?.findMember(name) }
+        val res = members[name]
+        if (res == null) {
+            for (superChain in superChains) {
+                val member = superChain.findMember(name)
+                if (member != null) return member
+            }
+        }
+        return res
+        //return members.getOrElse(name) { superChain?.findMember(name) }
     }
 
     private fun process(deep: Boolean, processor: (ITyClass, String, LuaClassMember) -> Unit) {
@@ -41,7 +49,9 @@ class ClassMemberChain(val ty: ITyClass, var superChain: ClassMemberChain?) {
             processor(ty, t, u)
         }
         if (deep)
-            superChain?.process(deep, processor)
+            for (superChain in superChains) {
+                superChain.process(deep, processor)
+            }
     }
 
     fun process(deep: Boolean, processor: (ITyClass, LuaClassMember) -> Unit) {
@@ -53,6 +63,7 @@ class ClassMemberChain(val ty: ITyClass, var superChain: ClassMemberChain?) {
     }
 
     private fun canOverride(member: LuaClassMember, superMember: LuaClassMember): Boolean {
+        return true
         return member.worth > superMember.worth || (member.worth == superMember.worth && member.worth > LuaClassMember.WORTH_ASSIGN)
     }
 }

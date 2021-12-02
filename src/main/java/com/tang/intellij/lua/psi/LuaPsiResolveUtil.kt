@@ -59,14 +59,11 @@ fun resolveInFile(refName:String, pin: PsiElement, context: SearchContext?): Psi
     else if (ret != null && refName == Constants.WORD_SELF) {
         val methodDef = PsiTreeUtil.getStubOrPsiParentOfType(pin, LuaClosureExpr::class.java)
         val assignment = PsiTreeUtil.getStubOrPsiParentOfType(methodDef, LuaAssignStat::class.java)
-        val varlist = assignment?.firstChild
-        if (varlist is LuaVarList) {
-            val indexExpr = varlist.firstChild
-            if (indexExpr is LuaIndexExpr && context != null) {
-                val nameExpr = indexExpr.firstChild
-                if (nameExpr is LuaNameExpr) {
-                    ret = resolve(nameExpr, context)
-                }
+        val indexExpr = assignment?.getExprAt(0)
+        if (indexExpr is LuaIndexExpr && context != null) {
+            val nameExpr = indexExpr.firstChild
+            if (nameExpr is LuaNameExpr) {
+                ret = resolve(nameExpr, context)
             }
         }
     }

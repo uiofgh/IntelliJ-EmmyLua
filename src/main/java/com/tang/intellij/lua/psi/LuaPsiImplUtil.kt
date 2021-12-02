@@ -211,6 +211,52 @@ fun getFirstStringArg(callExpr: LuaCallExpr): PsiElement? {
     return path
 }
 
+/**
+ * 获取第一个参数
+ * @param callExpr callExpr
+ * *
+ * @return String PsiElement
+ */
+fun getFirstArg(callExpr: LuaCallExpr): PsiElement? {
+    val args = callExpr.args
+    var path: PsiElement? = null
+
+    when (args) {
+        is LuaSingleArg -> {
+            val expr = args.expr
+            path = expr
+        }
+        is LuaListArgs -> args.exprList.let { list ->
+            if (list.isNotEmpty()) {
+                val valueExpr = list[0]
+                path = valueExpr
+            }
+        }
+    }
+    return path
+}
+
+/**
+ * 获取第二个参数
+ * @param callExpr callExpr
+ * *
+ * @return String PsiElement
+ */
+fun getSecondArg(callExpr: LuaCallExpr): PsiElement? {
+    val args = callExpr.args
+    var path: PsiElement? = null
+
+    when (args) {
+        is LuaListArgs -> args.exprList.let { list ->
+            if (list.isNotEmpty()) {
+                val valueExpr = list[1]
+                path = valueExpr
+            }
+        }
+    }
+    return path
+}
+
 fun isMethodDotCall(callExpr: LuaCallExpr): Boolean {
     val expr = callExpr.expr
     if (expr is LuaNameExpr)

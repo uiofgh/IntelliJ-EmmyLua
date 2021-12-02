@@ -23,12 +23,14 @@ import com.tang.intellij.lua.editor.completion.MemberCompletionMode
 import com.tang.intellij.lua.psi.*
 import com.tang.intellij.lua.psi.search.LuaShortNamesManager
 import com.tang.intellij.lua.search.SearchContext
+import com.tang.intellij.lua.ty.ITy
 import com.tang.intellij.lua.ty.TyLazyClass
 
 open class BaseResolver {
     open var resolverType: ResolverType = ResolverType.Base
     private var _dofileMap: HashMap<String, LuaPsiFile> = HashMap()
     private var _dofiles: ArrayList<LuaPsiFile> = ArrayList()
+    private var _classInheritMap: HashMap<String, HashSet<String>> = HashMap()
 
     fun dofileMap(project: Project, context: SearchContext): HashMap<String, LuaPsiFile> {
         if (_dofileMap.isEmpty() || _dofileMap.size < 60) {
@@ -87,7 +89,7 @@ open class BaseResolver {
         return _dofiles
     }
 
-    fun addDofileCompletions(session: CompletionSession, provider : ClassMemberCompletionProvider) {
+    fun addDofileCompletions(session: CompletionSession, provider: ClassMemberCompletionProvider) {
         val completionParameters = session.parameters
         val completionResultSet = session.resultSet
         val cur = completionParameters.position
@@ -102,5 +104,24 @@ open class BaseResolver {
         }
     }
 
+    fun regClassInherit(son: String, parent: String? = null) {
+        if (!_classInheritMap.containsKey(son)) {
+            val set = HashSet<String>();
+            _classInheritMap[son] = set
+        }
+        val set = _classInheritMap[son]
+        if (parent != null) {
+            set?.add(parent)
+        }
+    }
 
+    fun getLazyClass(son: String): ITy {
+        if (_classInheritMap.containsKey(son)) {
+            val set = _classInheritMap[son]
+            if (set != null) {
+                return TyLazyClass(son, superClassName2 = set.toTypedArray())
+            }
+        }
+        return TyLazyClass(son)
+    }
 }
