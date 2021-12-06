@@ -182,7 +182,12 @@ private open class Scope(
     private fun find(expr: LuaNameExpr): Declaration? {
         val name = expr.name
         var ret: Declaration? = null
-        walkUp(tree.getPosition(expr), 0) { if (it.name == name) { ret = it; false } else true }
+        walkUp(tree.getPosition(expr), 0) {
+            if (it.name == name)
+                if (name != "panel" || it.psi.parent?.parent?.text != "panel = nil")
+                    ret = it
+            ret == null
+        }
         return ret
     }
 

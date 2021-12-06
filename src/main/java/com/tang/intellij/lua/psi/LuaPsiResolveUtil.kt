@@ -57,17 +57,33 @@ fun resolveInFile(refName:String, pin: PsiElement, context: SearchContext?): Psi
     // ..
     // end
     else if (ret != null && refName == Constants.WORD_SELF) {
-        val methodDef = PsiTreeUtil.getStubOrPsiParentOfType(pin, LuaClosureExpr::class.java)
-        val assignment = PsiTreeUtil.getStubOrPsiParentOfType(methodDef, LuaAssignStat::class.java)
-        val indexExpr = assignment?.getExprAt(0)
-        if (indexExpr is LuaIndexExpr && context != null) {
-            val nameExpr = indexExpr.firstChild
-            if (nameExpr is LuaNameExpr) {
-                ret = resolve(nameExpr, context)
-            }
-        }
+        ret = getClsExpr(pin, context)
     }
 
+    return ret
+}
+
+/**
+ * 从匿名方法中查找类expr
+ * class.func = function(self) {}
+ * ..
+ * end
+ *
+ * @param element 方法内部变量
+ * @param context context
+ * @return PsiElement class
+ */
+fun getClsExpr(element: PsiElement, context: SearchContext?): PsiElement? {
+    var ret: PsiElement? = null
+    val methodDef = PsiTreeUtil.getStubOrPsiParentOfType(element, LuaClosureExpr::class.java)
+    val assignment = PsiTreeUtil.getStubOrPsiParentOfType(methodDef, LuaAssignStat::class.java)
+    val indexExpr = assignment?.getExprAt(0)
+    if (indexExpr is LuaIndexExpr && context != null) {
+        val nameExpr = indexExpr.firstChild
+        if (nameExpr is LuaNameExpr) {
+            ret = resolve(nameExpr, context)
+        }
+    }
     return ret
 }
 
@@ -109,9 +125,24 @@ fun resolve(nameExpr: LuaNameExpr, context: SearchContext): PsiElement? {
     if (resolveResult == null || resolveResult is LuaNameExpr) {
         val target = (resolveResult as? LuaNameExpr) ?: nameExpr
         val refName = target.name
+        // panel = nil
+        // panel = ui_template:create()...
+        if (refName == "panel") {
+            val t = target.assignStat?.valueExprList?.exprList?.get(0)
+            if (t is LuaCallExpr && t.expr.text == "ui_template:create") {
+                when (getSecondArg(t)) {
+                    is LuaLiteralExpr -> {
+                        return target
+                    }
+                }
+            }
+        }
         val project = context.project;
-        val map = ResolverFactory.getResolver(ResolverType.Dh25Client, project).dofileMap(project, context)
-        val moduleName = map.getOrDefault(refName, target).moduleName ?: Constants.WORD_G
+        var moduleName = target.moduleName ?: Constants.WORD_G
+        val tmp = ResolverFactory.getResolver(ResolverType.Dh25Client, project).getModuleName(refName, project, context)
+        if (tmp != null) {
+            moduleName = tmp
+        }
         LuaClassMemberIndex.process(moduleName, refName, context, Processor {
             resolveResult = it
             false
@@ -129,10 +160,24 @@ fun multiResolve(ref: LuaNameExpr, context: SearchContext): Array<PsiElement> {
         list.add(resolveResult)
     } else {
         val refName = ref.name
+        if (refName == "panel") {
+            val t = ref.assignStat?.valueExprList?.exprList?.get(0)
+            if (t is LuaCallExpr&& t.expr.text == "ui_template:create") {
+                when (getSecondArg(t)) {
+                    is LuaLiteralExpr -> {
+                        list.add(ref)
+                        return list.toTypedArray()
+                    }
+                }
+            }
+        }
         val project = context.project;
-        val map = ResolverFactory.getResolver(ResolverType.Dh25Client, project).dofileMap(project, context)
-        val module = map.getOrDefault(refName, ref).moduleName ?: Constants.WORD_G
-        LuaClassMemberIndex.process(module, refName, context, Processor {
+        var moduleName = ref.moduleName ?: Constants.WORD_G
+        val tmp = ResolverFactory.getResolver(ResolverType.Dh25Client, project).getModuleName(refName, project, context)
+        if (tmp != null) {
+            moduleName = tmp
+        }
+        LuaClassMemberIndex.process(moduleName, refName, context, Processor {
             list.add(it)
             true
         })

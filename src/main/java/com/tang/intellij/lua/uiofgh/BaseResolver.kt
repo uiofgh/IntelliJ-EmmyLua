@@ -124,4 +124,10 @@ open class BaseResolver {
         }
         return TyLazyClass(son)
     }
+
+    fun getModuleName(refName: String, project: Project, context: SearchContext): String? {
+        val map = dofileMap(project, context)
+        if (map.containsKey(refName)) return map[refName]?.moduleName
+        return null
+    }
 }

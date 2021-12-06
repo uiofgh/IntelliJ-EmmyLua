@@ -190,8 +190,17 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
     if (expr is LuaNameExpr && expr.name == "class_define") {
         var parentClsName: String? = null
         when (val arg = getFirstArg(this)) {
-            is LuaIndexExpr -> parentClsName = arg.name?.substringAfterLast('.')
-            is LuaNameExpr -> parentClsName = arg.name
+            is LuaTypeGuessable -> {
+                when (val parentType = arg.guessType(context)) {
+                    is TyUnion -> {
+                        val childTypes = parentType.getChildTypes()
+                        val v = childTypes.toTypedArray()[0]
+                        if (v is TyClass)
+                            parentClsName = v.className
+                    }
+                    is TyClass -> parentClsName = parentType.className
+                }
+            }
         }
         val assign = PsiTreeUtil.getStubOrPsiParentOfType(this, LuaAssignStat::class.java)
         val nameExpr = assign?.getExprAt(0)
@@ -206,8 +215,17 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
     if (expr is LuaNameExpr && expr.name == "class_inherit") {
         var parentName: String? = null
         when (val arg = getSecondArg(this)) {
-            is LuaIndexExpr -> parentName = arg.name?.substringAfterLast('.')
-            is LuaNameExpr -> parentName = arg.name
+            is LuaTypeGuessable -> {
+                when (val parentType = arg.guessType(context)) {
+                    is TyUnion -> {
+                        val childTypes = parentType.getChildTypes()
+                        val v = childTypes.toTypedArray()[0]
+                        if (v is TyClass)
+                            parentName = v.className
+                    }
+                    is TyClass -> parentName = parentType.className
+                }
+            }
         }
         if (parentName != null) {
             var sonName: String? = null
@@ -221,6 +239,15 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
                 return resolver.getLazyClass(sonName)
             }  else {
                 return resolver.getLazyClass(parentName)
+            }
+        }
+    }
+    // ui_template:create()
+    if (expr is LuaIndexExpr && expr.text == "ui_template:create") {
+        when (val arg = getSecondArg(this)) {
+            is LuaLiteralExpr -> {
+                val className = arg.text
+                return TyLazyClass(className.substring(1, className.length - 1))
             }
         }
     }
@@ -398,7 +425,10 @@ private fun LuaIndexExpr.infer(context: SearchContext): ITy {
         //from other class member
         val propName = indexExpr.name
         if (propName != null) {
-            val prefixType = parentTy ?: indexExpr.guessParentType(context)
+            var prefixType = parentTy ?: indexExpr.guessParentType(context)
+            if (indexExpr.exprList[0].text == "gworld") {
+                prefixType = TyLazyClass("\"gworld\"")
+            }
             prefixType.eachTopClass(Processor { clazz ->
                 result = result.union(guessFieldType(propName, clazz, context))
                 true
