@@ -30,7 +30,7 @@ open class BaseResolver {
     open var resolverType: ResolverType = ResolverType.Base
     private var _dofileMap: HashMap<String, LuaPsiFile> = HashMap()
     private var _dofileMapFlags: HashMap<String, Boolean> = HashMap()
-    private var _dofileMapNames: Array<String> = arrayOf("class", "import", "initlog", "initxlib", "initglobals", "initprotos", "initsound", "initmodule", "initgame", "msganalyse", "events")
+    private var _dofileMapNames: Array<String> = arrayOf("class", "import", "initlog", "initxlib", "initglobals", "initprotos", "initsound", "initmodule", "initgame", "msganalyse", "events", "initinput")
     private var _classInheritMap: HashMap<String, HashSet<String>> = HashMap()
 
     init {
