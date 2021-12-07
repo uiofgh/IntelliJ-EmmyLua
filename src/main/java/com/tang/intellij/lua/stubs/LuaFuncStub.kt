@@ -65,7 +65,8 @@ class LuaFuncType : LuaStubElementType<LuaFuncStub, LuaFuncDef>("Global Function
 
     override fun shouldCreateStub(node: ASTNode): Boolean {
         val element = node.psi as LuaFuncDef
-        return element.funcBody != null && element.nameIdentifier != null && element.forwardDeclaration == null
+        // 暂时注释掉最后的判断，会导致死循环
+        return element.funcBody != null && element.nameIdentifier != null //&& element.forwardDeclaration == null
     }
 
     override fun serialize(stub: LuaFuncStub, stream: StubOutputStream) {

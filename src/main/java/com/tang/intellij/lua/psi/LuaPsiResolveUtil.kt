@@ -129,10 +129,16 @@ fun resolve(nameExpr: LuaNameExpr, context: SearchContext): PsiElement? {
         // panel = ui_template:create()...
         if (refName == "panel") {
             val t = target.assignStat?.valueExprList?.exprList?.get(0)
-            if (t is LuaCallExpr && t.expr.text == "ui_template:create") {
-                when (getSecondArg(t)) {
-                    is LuaLiteralExpr -> {
-                        return target
+            if (t is LuaCallExpr) {
+                val expr = t.expr
+                if (expr is LuaIndexExpr && expr.name == "create") {
+                    val child = expr.firstChild
+                    if (child is LuaNameExpr && child.name == "ui_template") {
+                        when (getSecondArg(t)) {
+                            is LuaLiteralExpr -> {
+                                return target
+                            }
+                        }
                     }
                 }
             }
@@ -162,11 +168,17 @@ fun multiResolve(ref: LuaNameExpr, context: SearchContext): Array<PsiElement> {
         val refName = ref.name
         if (refName == "panel") {
             val t = ref.assignStat?.valueExprList?.exprList?.get(0)
-            if (t is LuaCallExpr&& t.expr.text == "ui_template:create") {
-                when (getSecondArg(t)) {
-                    is LuaLiteralExpr -> {
-                        list.add(ref)
-                        return list.toTypedArray()
+            if (t is LuaCallExpr) {
+                val expr = t.expr
+                if (expr is LuaIndexExpr && expr.name == "create") {
+                    val child = expr.firstChild
+                    if (child is LuaNameExpr && child.name == "ui_template") {
+                        when (getSecondArg(t)) {
+                            is LuaLiteralExpr -> {
+                                list.add(ref)
+                                return list.toTypedArray()
+                            }
+                        }
                     }
                 }
             }

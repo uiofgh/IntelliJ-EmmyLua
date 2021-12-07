@@ -183,9 +183,16 @@ private open class Scope(
         val name = expr.name
         var ret: Declaration? = null
         walkUp(tree.getPosition(expr), 0) {
-            if (it.name == name)
-                if (name != "panel" || it.psi.parent?.parent?.text != "panel = nil")
+            if (it.name == name) {
+                if (name != "panel") {
                     ret = it
+                } else {
+                    val parent = it.psi.parent?.parent
+                    if (parent !is LuaAssignStat || parent.text != "panel = nil") {
+                        ret = it
+                    }
+                }
+            }
             ret == null
         }
         return ret

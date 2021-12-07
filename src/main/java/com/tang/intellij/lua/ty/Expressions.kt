@@ -35,7 +35,7 @@ import com.tang.intellij.lua.uiofgh.ResolverType
 fun inferExpr(expr: LuaExpr?, context: SearchContext): ITy {
     if (expr == null)
         return Ty.UNKNOWN
-    if ((expr is LuaIndexExpr || expr is LuaNameExpr) && expr.text != Constants.WORD_SELF) {
+    if ((expr is LuaIndexExpr || expr is LuaNameExpr) && expr.name != Constants.WORD_SELF) {
         val tree = LuaDeclarationTree.get(expr.containingFile)
         val declaration = tree.find(expr)?.firstDeclaration?.psi
         if (declaration != expr && declaration is LuaTypeGuessable) {
@@ -243,11 +243,16 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
         }
     }
     // ui_template:create()
-    if (expr is LuaIndexExpr && expr.text == "ui_template:create") {
-        when (val arg = getSecondArg(this)) {
-            is LuaLiteralExpr -> {
-                val className = arg.text
-                return TyLazyClass(className.substring(1, className.length - 1))
+    if (expr is LuaIndexExpr && expr.name == "create") {
+        val child = expr.firstChild
+        if (child is LuaNameExpr && child.name == "ui_template") {
+            when (val arg = getSecondArg(this)) {
+                is LuaLiteralExpr -> {
+                    val className = arg.text
+                    if (className != null) {
+                        return TyLazyClass(className.substring(1, className.length - 1))
+                    }
+                }
             }
         }
     }
@@ -426,7 +431,7 @@ private fun LuaIndexExpr.infer(context: SearchContext): ITy {
         val propName = indexExpr.name
         if (propName != null) {
             var prefixType = parentTy ?: indexExpr.guessParentType(context)
-            if (indexExpr.exprList[0].text == "gworld") {
+            if (indexExpr.exprList[0].name == "gworld") {
                 prefixType = TyLazyClass("\"gworld\"")
             }
             prefixType.eachTopClass(Processor { clazz ->

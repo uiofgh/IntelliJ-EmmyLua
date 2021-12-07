@@ -29,64 +29,37 @@ import com.tang.intellij.lua.ty.TyLazyClass
 open class BaseResolver {
     open var resolverType: ResolverType = ResolverType.Base
     private var _dofileMap: HashMap<String, LuaPsiFile> = HashMap()
-    private var _dofiles: ArrayList<LuaPsiFile> = ArrayList()
+    private var _dofileMapFlags: HashMap<String, Boolean> = HashMap()
+    private var _dofileMapNames: Array<String> = arrayOf("class", "import", "initlog", "initxlib", "initglobals", "initprotos", "initsound", "initmodule", "initgame", "msganalyse", "events")
     private var _classInheritMap: HashMap<String, HashSet<String>> = HashMap()
 
-    fun dofileMap(project: Project, context: SearchContext): HashMap<String, LuaPsiFile> {
-        if (_dofileMap.isEmpty() || _dofileMap.size < 60) {
-            val file = resolveRequireFile("initgenv", project) ?: return _dofileMap
-            val manager = LuaShortNamesManager.getInstance(project)
+    init {
+        for (name in _dofileMapNames) {
+            _dofileMapFlags[name] = false
+        }
+    }
 
-            LuaPsiTreeUtil.walkTopLevelInFile(file.lastChild, LuaExprStat::class.java) { it2 ->
-                val child = it2.firstChild
-                if (child is LuaCallExpr) {
-                    val func = child.firstChild
-                    if (func is LuaNameExpr && func.name == "dofile") {
-                        val arg = child.lastChild
-                        if (arg is LuaListArgs) {
-                            val args = arg.exprList
-                            val path = args[0].text.substringAfter('"').substringBefore(".lua").substringAfter('/')
-                            val module = resolveRequireFile(path, project)
-                            if (module is LuaPsiFile) {
-                                val members = manager.getClassMembers(module.cModuleName, context)
-                                members.forEach {
-                                    if (it.text != null)
-                                        _dofileMap[it.text] = module
-                                }
-                            }
-                        }
-                    }
+    fun dofileMap(project: Project, context: SearchContext): HashMap<String, LuaPsiFile> {
+        val manager = LuaShortNamesManager.getInstance(project)
+        for ((name, flag) in _dofileMapFlags) {
+            if (flag) continue
+            val module = resolveRequireFile(name, project)
+            if (module is LuaPsiFile) {
+                val members = manager.getClassMembers(module.cModuleName, context)
+                members.forEach {
+                    val tmp = it.name
+                    if (tmp != null)
+                        _dofileMap[tmp] = module
+                    _dofileMapFlags[name] = true
                 }
-                true
             }
         }
         return _dofileMap
     }
 
-    fun dofiles(project: Project, context: SearchContext): ArrayList<LuaPsiFile> {
-        if (_dofiles.size < 8) {
-            val file = resolveRequireFile("initgenv", project) ?: return _dofiles
-
-            LuaPsiTreeUtil.walkTopLevelInFile(file.lastChild, LuaExprStat::class.java) { it2 ->
-                val child = it2.firstChild
-                if (child is LuaCallExpr) {
-                    val func = child.firstChild
-                    if (func is LuaNameExpr && func.name == "dofile") {
-                        val arg = child.lastChild
-                        if (arg is LuaListArgs) {
-                            val args = arg.exprList
-                            val path = args[0].text.substringAfter('"').substringBefore(".lua").substringAfter('/')
-                            val module = resolveRequireFile(path, project)
-                            if (module is LuaPsiFile) {
-                                _dofiles.add(module)
-                            }
-                        }
-                    }
-                }
-                true
-            }
-        }
-        return _dofiles
+    fun dofiles(project: Project, context: SearchContext): Array<LuaPsiFile> {
+        dofileMap(project, context)
+        return _dofileMap.values.toTypedArray()
     }
 
     fun addDofileCompletions(session: CompletionSession, provider: ClassMemberCompletionProvider) {
