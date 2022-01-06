@@ -253,7 +253,7 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
                         val left = parent.firstChild?.firstChild
                         if (left is LuaNameExpr && left.name == "panel") {
                             val fileName = containingFile.name
-                            return TyLazyClass(fileName)
+                            return TyLazyClass(fileName.substringBefore(".lua"))
                         }
                     }
                     val className = arg.text
