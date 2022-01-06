@@ -53,7 +53,7 @@ fun resolveInFile(refName:String, pin: PsiElement, context: SearchContext?): Psi
                 expr
         }
     }
-    // class.func = function(self) {}
+    // class.func = function(self)
     // ..
     // end
     else if (ret != null && refName == Constants.WORD_SELF) {

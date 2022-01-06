@@ -248,9 +248,17 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
         if (child is LuaNameExpr && child.name == "ui_template") {
             when (val arg = getSecondArg(this)) {
                 is LuaLiteralExpr -> {
+                    val parent = luaCallExpr.parent?.parent
+                    if (parent is LuaAssignStat) {
+                        val left = parent.firstChild?.firstChild
+                        if (left is LuaNameExpr && left.name == "panel") {
+                            val fileName = containingFile.name
+                            return TyLazyClass(fileName)
+                        }
+                    }
                     val className = arg.text
                     if (className != null) {
-                        return TyLazyClass(className.substring(1, className.length - 1))
+                        return TyLazyClass("dlg_" + className.substring(1, className.length - 1))
                     }
                 }
             }
