@@ -486,12 +486,17 @@ private fun LuaTableExpr.infer(): ITy {
         }
     }
     // global XXX = {} is used as class
+    // add filename to prevent collision
     val p1 = PsiTreeUtil.getStubOrPsiParent(this)
     if (p1 is LuaExprList) {
         val p2 = PsiTreeUtil.getStubOrPsiParent(p1)
         if (p2 is LuaAssignStat){
             val nameExpr = p2.getExprAt(0)
             if (nameExpr is LuaNameExpr && isGlobal(nameExpr)) {
+                val filename = this.moduleName
+                if (filename != null) {
+                    return TyLazyClass(filename.substring(1, filename.length-1) + "@" + nameExpr.name)
+                }
                 return TyLazyClass(nameExpr.name)
             }
         }
