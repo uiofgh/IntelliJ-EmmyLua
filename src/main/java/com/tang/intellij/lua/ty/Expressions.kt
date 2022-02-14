@@ -211,6 +211,34 @@ private fun LuaCallExpr.infer(context: SearchContext): ITy {
             return resolver.getLazyClass(sonName)
         }
     }
+    // :Inherit
+    if (expr is LuaIndexExpr && expr.name == "Inherit") {
+        var parentClsName: String? = null
+        val childList = expr.exprList
+        if (childList.size > 0) {
+            when (val arg = childList[0]) {
+                is LuaTypeGuessable -> {
+                    when (val parentType = arg.guessType(context)) {
+                        is TyUnion -> {
+                            val childTypes = parentType.getChildTypes()
+                            val v = childTypes.toTypedArray()[0]
+                            if (v is TyClass)
+                                parentClsName = v.className
+                        }
+                        is TyClass -> parentClsName = parentType.className
+                    }
+                }
+            }
+        }
+        val assign = PsiTreeUtil.getStubOrPsiParentOfType(this, LuaAssignStat::class.java)
+        val nameExpr = assign?.getExprAt(0)
+        if (nameExpr is LuaNameExpr) {
+            val sonName = nameExpr.name
+            val resolver = ResolverFactory.getResolver(ResolverType.Dh25Client, context.project)
+            resolver.regClassInherit(sonName, parentClsName)
+            return resolver.getLazyClass(sonName)
+        }
+    }
     // class_inherit
     if (expr is LuaNameExpr && expr.name == "class_inherit") {
         var parentName: String? = null
